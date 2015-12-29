@@ -32,7 +32,6 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(express.static(__dirname + '/public'));
 
-
 app.get('/', util.checkUser, function(req, res) {
 
   res.render('index');
