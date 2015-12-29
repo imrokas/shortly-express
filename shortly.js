@@ -78,7 +78,7 @@ app.use(bodyParser.urlencoded({
 app.use(express.static(__dirname + '/public'));
 
 app.get('/', util.ensureAuthenticated, function(req, res) {
-  res.render('index', {user: req.user});
+  res.render('index');
 });
 
 app.get('/create', util.ensureAuthenticated,
