@@ -2,6 +2,8 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var session = require('express-session');
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -13,6 +15,12 @@ var Click = require('./app/models/click');
 
 var app = express();
 
+app.use(session({
+  secret:"you are cat",
+  resave: false,
+  saveUninitialized: true
+}));
+
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
@@ -23,24 +31,25 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 
-app.get('/', 
+app.get('/', util.checkUser, function(req, res) {
+
+  res.render('index');
+
+});
+
+app.get('/create', util.checkUser,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
-function(req, res) {
-  res.render('index');
-});
-
-app.get('/links', 
+app.get('/links', util.checkUser,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links', util.checkUser,
 function(req, res) {
   var uri = req.body.url;
 
@@ -78,7 +87,56 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
+app.get('/login', function(req, res) {
+  res.render('login');
+});
 
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
+
+app.post('/login', function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  new User({'username':username}).fetch().then(function(user) {
+    if (!user) {
+      res.redirect('/login');
+    } else {
+      // compare the passwords
+      bcrypt.compare(password, user.password, function(err, result) {
+        if (err) console.log(err);
+        // handle the session
+        // if true, create session, so user doesn't have to login again
+        req.session.regenerate(function() {
+          req.session.user = username;
+          res.redirect('/');
+        });
+      });
+    }
+  });
+});
+
+app.post('/signup', function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  new User({'username', username}).fetch().then(function(user) {
+    if (!user) {
+      var user = new User({
+        username: username, 
+        password: bcrypt.hash(password, null, null, function(err, hash) {
+          if (err) console.log(err);
+
+        });
+      });
+
+    } else {
+      res.redirect('/signup');
+    }
+  });
+
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
